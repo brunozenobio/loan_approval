@@ -1,0 +1,147 @@
+```{r}
+setwd("/home/bruno/Projects/r_proyects/loan_approval")
+```
+
+```{r}
+download.file(
+  "https://www.kaggle.com/api/v1/datasets/download/muhammadmusharraf444/loan-approval-dataset",
+  destfile = "data/raw/loan-approval-dataset.zip",
+  mode = "wb"
+)
+
+unzip(
+  "data/raw/loan-approval-dataset.zip",
+  exdir = "data/raw"
+)
+```
+
+```{r}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+#install.packages("tidyverse")
+#install.packages("skimr")
+library(skimr)
+library(tidyverse)
+```
+
+```{r}
+getwd()
+```
+
+### Importamos el Dataset
+
+```{r}
+loan_data <- read_csv(file = 'data/raw/loan_data_new.csv')
+```
+
+### Hacemos un vistazo de sus columnas y valores
+
+```{r}
+glimpse(loan_data)
+```
+
+#### Revisamos valroes nulos
+
+```{r}
+loan_data |>
+    is.na() |> sum()
+```
+
+```{r}
+str(loan_data)
+```
+
+```{r}
+summary(loan_data)
+```
+
+### Vemos los tipos de las variables
+
+```{r}
+sapply(loan_data,class)
+```
+
+Las variables que estan como Numeric recen correctas, a excepcion de Load Status, al ser la variable objetivo cuyos valores son 1 / 0 (aceptado / rechazado) se pasara a factor Luego se hara uan revision de las que son de tipo character.
+
+```{r}
+loan_data$"Loan Status" <- factor(loan_data$"Loan Status")
+```
+
+```{r}
+loan_data |> select("Loan Status") |> unique()
+```
+
+```{r}
+loan_data |> select(where(is.character))
+```
+
+### La variable Previous loan sera tratada como factor
+
+### Las varables restantes, tambien seran consideradas factor, y luego se vera el tratamiento de enconding para cada una, si es requerido
+
+```{r}
+loan_data$Gender <- factor(loan_data$Gender)
+loan_data$Education <- factor(loan_data$Education)
+loan_data$`Home Onwership` <- factor(loan_data$`Home Onwership`)
+loan_data$`Loan Intent` <- factor(loan_data$`Loan Intent`)
+loan_data$`Previous Loan` <- factor(loan_data$`Previous Loan`)
+```
+
+```{r}
+loan_data |> select(where(is.factor))
+```
+
+```{r}
+loan_data |> select(where(is.numeric))
+```
+
+#### De esta manera todas las variables tiene su tipos correctos.
+
+#### Una observacion importante es que los años de experiencia es numerica pero es una variable ordinal, es decir es importante la connotacion numerica
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = Age),binwidth=5) + 
+  scale_x_continuous(
+    breaks = seq(0, 150, by = 5)
+  )
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_boxplot(aes(y = Age),binwidth=5) + 
+  scale_y_continuous(breaks=seq(0,150,by=5))
+
+  
+```
+
+### Se observa que la mayoria de edade esta por sobre los 25 años, aun asi hay varios outliers, y principalmente varios mayor a 100, estos son un error y no se tomaran en cuenta
+
+##### Primero miramos eso casos 
+
+```{r}
+loan_data |> 
+  filter(Age >= 90)
+```
+
+```{r}
+loan_data |> 
+  summarise(
+    total = n(),
+    may_90 = sum(Age >= 90,na.rm=TRUE),
+    Porcentaje = may_90 / total * 100
+  )
+```
+
+### Al no conocer como se completan las columnas Age, y  Epmployee Experience, no podes reconocer el origen de esotos datos anomalos, pero  si bien ambos numeros parecen ser acordes entre si no tienen sentido propio
+
+### Ademas la proporcion es aproximadamente el 0.02% del datset, no se perderia informacion importante
+
+```{r}
+loan_data <- loan_data |> 
+  filter(Age <=  90)
+```
