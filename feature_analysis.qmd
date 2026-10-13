@@ -121,7 +121,7 @@ ggplot(data = loan_data) +
 
 ### Se observa que la mayoria de edade esta por sobre los 25 años, aun asi hay varios outliers, y principalmente varios mayor a 100, estos son un error y no se tomaran en cuenta
 
-##### Primero miramos eso casos 
+##### Primero miramos eso casos
 
 ```{r}
 loan_data |> 
@@ -137,7 +137,7 @@ loan_data |>
   )
 ```
 
-### Al no conocer como se completan las columnas Age, y  Epmployee Experience, no podes reconocer el origen de esotos datos anomalos, pero  si bien ambos numeros parecen ser acordes entre si no tienen sentido propio
+### Al no conocer como se completan las columnas Age, y Epmployee Experience, no podes reconocer el origen de esotos datos anomalos, pero si bien ambos numeros parecen ser acordes entre si no tienen sentido propio
 
 ### Ademas la proporcion es aproximadamente el 0.02% del datset, no se perderia informacion importante
 
@@ -145,3 +145,462 @@ loan_data |>
 loan_data <- loan_data |> 
   filter(Age <=  90)
 ```
+
+## Person income
+
+```{r}
+summary(loan_data$`Person Income`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Person Income`),binwidth=10000) +
+scale_x_continuous(
+    breaks = seq(0, 500000, by = 100000)
+  )
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_boxplot(aes(y = loan_data$`Person Income`),binwidth=5) + 
+  scale_y_continuous(breaks=seq(0,150,by=5))
+
+
+```
+
+Como muestrran ambos graficos, parecee haber mas tendencia hacia los 50000, pero tiene muchos outliers, que hacen que se mueva la media. no parecen valores erronos, ya que no hay valores con decimales.
+
+### Employee Experience
+
+ 
+
+```{r}
+summary(loan_data$`Employee Experience`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Employee Experience`),binwidth=4) +
+scale_x_continuous(
+    breaks = seq(0, 100, by = 5)
+  )
+```
+
+Parece una distribucio estandar con tendencia hcia los 10 años, an el filtro que se hizo de edad, elinamos tambien casos de años de experiencioa muy extremos (mayores a100)
+
+### Loan Amount
+
+```{r}
+summary(loan_data$`Loan Amount`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Loan Amount`),binwidth=500) +
+scale_x_continuous(
+    breaks = seq(0, 35000, by = 3000)
+          )
+```
+
+Si bien la distribucion no es tan estandar se concentra en valores bajos, con picos en ciertos valores, disminuyendo bastante la frecuencia hacia los altos
+
+### Loan interest Rate
+
+```{r}
+summary(loan_data$`Loan interest Rate`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Loan interest Rate`),binwidth=2) +
+scale_x_continuous(
+    breaks = seq(0, 100, by = 5)
+          )
+```
+
+La tasa de interes parece tener una distribucion estandar y no presenta ninguna anomalia
+
+### Loan percentage (porcentage del ingreso de la persona que representa el monto del credito)
+
+```{r}
+summary(loan_data$`Loan percentage`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Loan percentage`),bins=10) +
+scale_x_continuous(
+    breaks = seq(0, 1, by = .2)
+          )
+
+```
+
+Los valores tiene una distribcion ligeramente unioforme con valores inferiores al 50% no parece haber nada raro, se revisara si hay 0
+
+```{r}
+loan_data |> filter(`Loan percentage`==0)
+
+```
+
+Si hay valores nulos, se calcular Loan percentage a travez del cociente : Loan Amount / Person Income, para ver si es un error de redondeo, o falta de datos.
+
+```{r}
+loan_data |> 
+filter(`Loan percentage`==0) |>
+mutate(percentage_cal = `Loan Amount` / `Person Income`)
+```
+
+Efectivamente, es un problema de redondeo, todos tiene su valores debajo de los dos decimales , hago el remplaza ya que es informacion valida
+
+```{r}
+loan_data <- loan_data |>
+  mutate(
+    `Loan percentage` = if_else(
+      `Loan percentage` == 0,
+      `Loan Amount` / `Person Income`,
+      `Loan percentage`
+    )
+  )
+```
+
+### Credit History
+
+```{r}
+summary(loan_data$`Credit History`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Credit History`),binwidth=2) +
+scale_x_continuous(
+    breaks = seq(0, 100, by = 5)
+              )
+```
+
+La distribucion no presenta anomalias solo que esta sesgada a la derecha, ademas no parece ener outliers ni valores que sean 0
+
+```{r}
+setwd("/home/bruno/Projects/r_proyects/loan_approval")
+```
+
+```{r}
+download.file(
+  "https://www.kaggle.com/api/v1/datasets/download/muhammadmusharraf444/loan-approval-dataset",
+  destfile = "data/raw/loan-approval-dataset.zip",
+  mode = "wb"
+)
+
+unzip(
+  "data/raw/loan-approval-dataset.zip",
+  exdir = "data/raw"
+)
+```
+
+```{r}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+#install.packages("tidyverse")
+#install.packages("skimr")
+library(skimr)
+library(tidyverse)
+```
+
+```{r}
+getwd()
+```
+
+### Importamos el Dataset
+
+```{r}
+loan_data <- read_csv(file = 'data/raw/loan_data_new.csv')
+```
+
+### Hacemos un vistazo de sus columnas y valores
+
+```{r}
+glimpse(loan_data)
+```
+
+#### Revisamos valroes nulos
+
+```{r}
+loan_data |>
+    is.na() |> sum()
+```
+
+```{r}
+str(loan_data)
+```
+
+```{r}
+summary(loan_data)
+```
+
+### Vemos los tipos de las variables
+
+```{r}
+sapply(loan_data,class)
+```
+
+Las variables que estan como Numeric recen correctas, a excepcion de Load Status, al ser la variable objetivo cuyos valores son 1 / 0 (aceptado / rechazado) se pasara a factor Luego se hara uan revision de las que son de tipo character.
+
+```{r}
+loan_data$"Loan Status" <- factor(loan_data$"Loan Status")
+```
+
+```{r}
+loan_data |> select("Loan Status") |> unique()
+```
+
+```{r}
+loan_data |> select(where(is.character))
+```
+
+### La variable Previous loan sera tratada como factor
+
+### Las varables restantes, tambien seran consideradas factor, y luego se vera el tratamiento de enconding para cada una, si es requerido
+
+```{r}
+loan_data$Gender <- factor(loan_data$Gender)
+loan_data$Education <- factor(loan_data$Education)
+loan_data$`Home Onwership` <- factor(loan_data$`Home Onwership`)
+loan_data$`Loan Intent` <- factor(loan_data$`Loan Intent`)
+loan_data$`Previous Loan` <- factor(loan_data$`Previous Loan`)
+```
+
+```{r}
+loan_data |> select(where(is.factor))
+```
+
+```{r}
+loan_data |> select(where(is.numeric))
+```
+
+#### De esta manera todas las variables tiene su tipos correctos.
+
+#### Una observacion importante es que los años de experiencia es numerica pero es una variable ordinal, es decir es importante la connotacion numerica
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = Age),binwidth=5) + 
+  scale_x_continuous(
+    breaks = seq(0, 150, by = 5)
+  )
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_boxplot(aes(y = Age),binwidth=5) + 
+  scale_y_continuous(breaks=seq(0,150,by=5))
+
+  
+```
+
+### Se observa que la mayoria de edade esta por sobre los 25 años, aun asi hay varios outliers, y principalmente varios mayor a 100, estos son un error y no se tomaran en cuenta
+
+##### Primero miramos eso casos
+
+```{r}
+loan_data |> 
+  filter(Age >= 90)
+```
+
+```{r}
+loan_data |> 
+  summarise(
+    total = n(),
+    may_90 = sum(Age >= 90,na.rm=TRUE),
+    Porcentaje = may_90 / total * 100
+  )
+```
+
+### Al no conocer como se completan las columnas Age, y Epmployee Experience, no podes reconocer el origen de esotos datos anomalos, pero si bien ambos numeros parecen ser acordes entre si no tienen sentido propio
+
+### Ademas la proporcion es aproximadamente el 0.02% del datset, no se perderia informacion importante
+
+```{r}
+loan_data <- loan_data |> 
+  filter(Age <=  90)
+```
+
+## Person income
+
+```{r}
+summary(loan_data$`Person Income`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Person Income`),binwidth=10000) +
+scale_x_continuous(
+    breaks = seq(0, 500000, by = 100000)
+  )
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_boxplot(aes(y = loan_data$`Person Income`),binwidth=5) + 
+  scale_y_continuous(breaks=seq(0,150,by=5))
+
+
+```
+
+Como muestrran ambos graficos, parecee haber mas tendencia hacia los 50000, pero tiene muchos outliers, que hacen que se mueva la media. no parecen valores erronos, ya que no hay valores con decimales.
+
+### Employee Experience
+
+ 
+
+```{r}
+summary(loan_data$`Employee Experience`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Employee Experience`),binwidth=4) +
+scale_x_continuous(
+    breaks = seq(0, 100, by = 5)
+  )
+```
+
+Parece una distribucio estandar con tendencia hcia los 10 años, an el filtro que se hizo de edad, elinamos tambien casos de años de experiencioa muy extremos (mayores a100)
+
+### Loan Amount
+
+```{r}
+summary(loan_data$`Loan Amount`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Loan Amount`),binwidth=500) +
+scale_x_continuous(
+    breaks = seq(0, 35000, by = 3000)
+          )
+```
+
+Si bien la distribucion no es tan estandar se concentra en valores bajos, con picos en ciertos valores, disminuyendo bastante la frecuencia hacia los altos
+
+### Loan interest Rate
+
+```{r}
+summary(loan_data$`Loan interest Rate`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Loan interest Rate`),binwidth=2) +
+scale_x_continuous(
+    breaks = seq(0, 100, by = 5)
+          )
+```
+
+La tasa de interes parece tener una distribucion estandar y no presenta ninguna anomalia
+
+### Loan percentage (porcentage del ingreso de la persona que representa el monto del credito)
+
+```{r}
+summary(loan_data$`Loan percentage`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Loan percentage`),bins=10) +
+scale_x_continuous(
+    breaks = seq(0, 1, by = .2)
+          )
+
+```
+
+Los valores tiene una distribcion ligeramente unioforme con valores inferiores al 50% no parece haber nada raro, se revisara si hay 0
+
+```{r}
+loan_data |> filter(`Loan percentage`==0)
+
+```
+
+Si hay valores nulos, se calcular Loan percentage a travez del cociente : Loan Amount / Person Income, para ver si es un error de redondeo, o falta de datos.
+
+```{r}
+loan_data |> 
+filter(`Loan percentage`==0) |>
+mutate(percentage_cal = `Loan Amount` / `Person Income`)
+```
+
+Efectivamente, es un problema de redondeo, todos tiene su valores debajo de los dos decimales , hago el remplaza ya que es informacion valida
+
+```{r}
+loan_data <- loan_data |>
+  mutate(
+    `Loan percentage` = if_else(
+      `Loan percentage` == 0,
+      `Loan Amount` / `Person Income`,
+      `Loan percentage`
+    )
+  )
+```
+
+### Credit History
+
+```{r}
+summary(loan_data$`Credit History`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Credit History`),binwidth=2) +
+scale_x_continuous(
+    breaks = seq(0, 100, by = 5)
+              )
+```
+
+La distribucion no presenta anomalias solo que esta sesgada a la derecha, ademas no parece ener outliers ni valores que sean 0
+
+### Credit Score
+
+```{r}
+summary(loan_data$`Credit Score`)
+```
+
+```{r}
+ggplot(data = loan_data) + 
+  geom_histogram(aes(x = loan_data$`Credit Score`),binwidth=30) +
+scale_x_continuous(
+    breaks = seq(200, 1000, by = 50)
+              )
+
+```
+
+Otra vez la distribucion no presenta anomalias y es bastante centrada Media y mediana se parecen.
+
+## Pasemos a las variables numericas.
+
+```{r}
+loan_data |> select(where(is.factor))
+
+```
+
+### Gender
+
+```{r}
+ggplot(data=loan_data) + 
+    geom_bar(aes(x = Gender))
+```
+
+### 
+Los generos estan casi uniformemente distribuidos
+
+### Education
+
+ 
+
+```{r}
+ggplot(data=loan_data) + 
+    geom_bar(aes(x = Education))
+```
+
+Docotarado y master tiene menos frecuencias que el resto, als demas estan uniformes
